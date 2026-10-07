@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>M</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080a0c;color:#f6f7f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.app{max-width:520px;margin:auto;padding:22px 16px 100px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.logo{font-size:34px;font-weight:900}.muted{color:#9299a2}.card{background:#13171b;border:1px solid #252b31;border-radius:22px;padding:18px;margin:12px 0}
+.balance{font-size:38px;font-weight:850;margin:8px 0}.green{color:#54df8a}.row{display:flex;gap:10px;align-items:center}.between{justify-content:space-between}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mini{background:#0d1013;border:1px solid #242a30;border-radius:16px;padding:14px}
+button{border:0;border-radius:13px;padding:12px 14px;background:#fff;color:#090a0b;font-weight:750;font-size:14px;cursor:pointer}
+button.secondary{background:#20262c;color:#fff}.danger{color:#ff6b6b!important}.title{font-size:19px;font-weight:800;margin:20px 2px 8px}
+input,select{width:100%;background:#0d1013;color:#fff;border:1px solid #303840;border-radius:12px;padding:12px;margin:5px 0;font-size:16px}
+.actions{display:flex;gap:8px;margin-top:10px}.actions>*{flex:1}.goal{padding:14px 0;border-bottom:1px solid #262c31}.goal:last-child{border:0}
+.bar{height:8px;background:#262b30;border-radius:99px;overflow:hidden;margin:9px 0}.fill{height:100%;background:#54df8a}
+.badge{font-size:12px;padding:5px 8px;border-radius:99px;background:#252a30}.tx{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #24292e}
+.modal{display:none;position:fixed;inset:0;background:#000b;align-items:flex-end;justify-content:center;z-index:9}.modal.show{display:flex}
+.sheet{background:#15191d;border-radius:24px 24px 0 0;padding:20px;width:100%;max-width:520px;max-height:85vh;overflow:auto}
+.close{float:left;background:#252a30;color:#fff;padding:8px 11px}.small{font-size:13px}.sp{height:8px}
+</style></head>
+<body><main class="app">
+<div class="top"><div><div class="logo">M</div><div class="muted small">فلوسك، بشكل أوضح.</div></div><button class="secondary" onclick="openModal('accounts')">الحسابات</button></div>
+<div class="card"><div class="muted">الرصيد المتاح</div><div class="balance green" id="available">0.000 د.ك</div><div class="muted small">فيزا + الأساسي فقط — السيفنقز مو للمصروف</div>
+<div class="grid" style="margin-top:14px"><div class="mini"><span class="muted">فيزا</span><b id="visaView"></b></div><div class="mini"><span class="muted">الأساسي</span><b id="mainView"></b></div><div class="mini"><span class="muted">السيفنقز</span><b id="savView"></b></div><div class="mini"><span class="muted">غير مخصص للأهداف</span><b id="freeSav"></b></div></div>
+<div class="actions"><button onclick="openModal('expense')">+ مصروف</button><button class="secondary" onclick="openModal('income')">إضافة دخل +</button></div></div>
+<div class="card"><div class="between row"><div><div class="muted">مصروف الفترة</div><div style="font-size:26px;font-weight:850" id="spent"></div></div><span class="badge">30 يوم</span></div></div>
+<div class="title">الأهداف</div><div class="card"><div id="goals"></div><button style="width:100%;margin-top:12px" onclick="openGoal()">+ هدف</button></div>
+<div class="title">آخر العمليات</div><div class="card" id="transactions"></div>
+</main>
+<div class="modal" id="modal"><div class="sheet"><button class="close" onclick="closeModal()">✕</button><h2 id="modalTitle"></h2><div id="modalBody"></div></div></div>
+<script>
+const KEY='M_state_v6';
+const $=id=>document.getElementById(id);
+const modal=$('modal'), modalTitle=$('modalTitle'), modalBody=$('modalBody');
+const visaView=$('visaView'), mainView=$('mainView'), savView=$('savView'), freeSav=$('freeSav');
+const spent=$('spent'), goals=$('goals'), transactions=$('transactions');
+const defaults={accounts:{visa:5.400,main:.232,savings:140.055,investment:0},categories:['قهوة','أكل','بنزين','تدخين','مشتريات','متفرقات','مكان سري'],transactions:[
+{id:1,type:'expense',category:'مكان سري',amount:30},{id:2,type:'expense',category:'بنزين',amount:8.1},{id:3,type:'expense',category:'قهوة',amount:1.75}],
+goals:[{id:1,name:'دفع المخالفات',target:300,current:100,date:'2026-11-22',priority:'red',allocated:100},{id:2,name:'شراء سيارة',target:20000,current:0,date:'2030-04-07',priority:'green',allocated:0}]};
+let state=JSON.parse(localStorage.getItem(KEY)||'null')||defaults;
+function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function money(x){return Number(x||0).toFixed(3)+' د.ك'}
+function render(){
+ let a=state.accounts; document.getElementById('available').textContent=money(a.visa+a.main);
+ visaView.textContent=money(a.visa);mainView.textContent=money(a.main);savView.textContent=money(a.savings);
+ let alloc=state.goals.reduce((s,g)=>s+Number(g.allocated||0),0);freeSav.textContent=money(Math.max(0,a.savings-alloc));
+ spent.textContent=money(state.transactions.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0));
+ goals.innerHTML=state.goals.map(g=>{let p=Math.min(100,g.target?g.current/g.target*100:0);let icon=g.priority==='red'?'🔴':g.priority==='yellow'?'🟡':'🟢';return `<div class="goal"><div class="row between"><b>${esc(g.name)}</b><span>${icon}</span></div><div class="small muted">${money(g.current)} من ${money(g.target)} • ${p.toFixed(1)}%</div><div class="bar"><div class="fill" style="width:${p}%"></div></div><div class="small muted">التاريخ: ${g.date||'—'} • مخصص من السيفنقز: ${money(g.allocated||0)}</div><div class="actions"><button class="secondary" onclick="openGoal(${g.id})">✏️ تعديل</button><button class="secondary danger" onclick="delGoal(${g.id})">🗑️ حذف</button></div></div>`}).join('');
+ transactions.innerHTML=state.transactions.slice().reverse().slice(0,8).map(t=>`<div class="tx"><span>${t.type==='income'?'دخل • '+esc(t.source||'دخل'):esc(t.category)}</span><b class="${t.type==='income'?'green':''}">${t.type==='income'?'+':'−'} ${money(t.amount)}</b></div>`).join('')||'<div class="muted">ماكو عمليات</div>';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function closeModal(){modal.classList.remove('show')}
+function openModal(type){modal.classList.add('show');
+ if(type==='expense'){modalTitle.textContent='إضافة مصروف';modalBody.innerHTML=`<input id="amt" type="number" step=".001" placeholder="المبلغ"><select id="cat">${state.categories.map(c=>`<option>${esc(c)}</option>`).join('')}<option value="__new">＋ أخرى</option></select><input id="newcat" placeholder="اسم الفئة الجديدة، مثال: حلاق" style="display:none"><button style="width:100%;margin-top:10px" id="saveExpense">إضافة</button>`;$('cat').onchange=()=>{$('newcat').style.display=$('cat').value==='__new'?'block':'none'};
+$('saveExpense').onclick=()=>{let n=+$('amt').value;if(!n)return;let c=$('cat').value;if(c==='__new'){c=$('newcat').value.trim();if(!c)return;if(!state.categories.includes(c))state.categories.push(c)}state.transactions.push({id:Date.now(),type:'expense',category:c,amount:n});save();closeModal()}}
+ if(type==='income'){modalTitle.textContent='إضافة دخل';modalBody.innerHTML=`<input id="amt" type="number" step=".001" placeholder="المبلغ"><input id="source" placeholder="المصدر"><select id="dest"><option value="visa">فيزا</option><option value="main">الأساسي</option><option value="savings">السيفنقز</option></select><button style="width:100%;margin-top:10px" id="saveIncome">إضافة الدخل</button>`;$('saveIncome').onclick=()=>{let n=+$('amt').value;if(!n)return;let d=$('dest').value;state.accounts[d]+=n;state.transactions.push({id:Date.now(),type:'income',source:$('source').value||'دخل',amount:n,destination:d});save();closeModal()}}
+ if(type==='accounts'){modalTitle.textContent='تعديل الأرصدة';modalBody.innerHTML=`<label>فيزا</label><input id="av" type="number" step=".001" value="${state.accounts.visa}"><label>الأساسي</label><input id="am" type="number" step=".001" value="${state.accounts.main}"><label>السيفنقز</label><input id="as" type="number" step=".001" value="${state.accounts.savings}"><label>الاستثمار</label><input id="ai" type="number" step=".001" value="${state.accounts.investment||0}"><button style="width:100%;margin-top:10px" id="saveAccounts">حفظ</button>`;$('saveAccounts').onclick=()=>{state.accounts={visa:+$('av').value||0,main:+$('am').value||0,savings:+$('as').value||0,investment:+$('ai').value||0};save();closeModal()}}
+}
+function openGoal(id){modal.classList.add('show');let g=id?state.goals.find(x=>x.id===id):null;modalTitle.textContent=g?'تعديل الهدف':'هدف جديد';modalBody.innerHTML=`<input id="gn" placeholder="اسم الهدف" value="${g?esc(g.name):''}"><input id="gt" type="number" step=".001" placeholder="المبلغ المطلوب" value="${g?g.target:''}"><input id="gc" type="number" step=".001" placeholder="المحقق" value="${g?g.current:''}"><input id="ga" type="number" step=".001" placeholder="المخصص من السيفنقز" value="${g?g.allocated||0:''}"><input id="gd" type="date" value="${g?g.date:''}"><select id="gp"><option value="red">🔴 عاجل</option><option value="yellow">🟡 متوسط</option><option value="green">🟢 طويل</option></select><button style="width:100%;margin-top:10px" id="saveGoal">حفظ</button>`;if(g)$('gp').value=g.priority;
+$('saveGoal').onclick=()=>{let name=$('gn').value.trim(),target=+$('gt').value,allocated=+$('ga').value||0;if(!name||!target)return;let other=state.goals.filter(x=>!g||x.id!==g.id).reduce((s,x)=>s+(+x.allocated||0),0);if(other+allocated>state.accounts.savings){alert('التخصيص أكبر من رصيد السيفنقز');return}let pr=$('gp').value;let obj={id:g?g.id:Date.now(),name,target,current:+$('gc').value||allocated,allocated,date:$('gd').value||suggestDate(pr),priority:pr};if(g)Object.assign(g,obj);else state.goals.push(obj);save();closeModal()}}
+function suggestDate(p){let d=new Date();d.setMonth(d.getMonth()+(p==='red'?2:p==='yellow'?12:42));return d.toISOString().slice(0,10)}
+function delGoal(id){if(confirm('حذف الهدف؟')){state.goals=state.goals.filter(g=>g.id!==id);save()}}
+render();
+</script></body></html>
